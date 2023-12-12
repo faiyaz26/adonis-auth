@@ -16,6 +16,12 @@ const GE = require('@adonisjs/generic-exceptions')
 
 const BaseScheme = require('./Base')
 const CE = require('../Exceptions')
+const { LRUCache } = require('lru-cache')
+
+const sessionCache = new LRUCache({
+  max: 1000,
+  ttl: 1000 * 60 * 5
+})
 
 /**
  * This scheme allows to make use of `sessions` to authenticate
@@ -318,7 +324,14 @@ class SessionScheme extends BaseScheme {
      * cookie
      */
     if (sessionValue) {
-      this.user = await this._serializerInstance.findById(sessionValue)
+      if (sessionCache.has(sessionValue)) {
+        this.user = sessionCache.get(sessionValue)
+        console.log('Returning user from cache')
+      } else {
+        this.user = await this._serializerInstance.findById(sessionValue)
+        sessionCache.set(sessionValue, this.user)
+        console.log('fetched user from db')
+      }
     }
 
     /**

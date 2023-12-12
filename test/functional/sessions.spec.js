@@ -30,6 +30,33 @@ test.group('Session', (group) => {
     this.server = http.createServer()
   })
 
+  test('throw exception when cookie exists but user doesn\'t', async (assert) => {
+    this.server.on('request', (req, res) => {
+      const Context = ioc.use('Adonis/Src/HttpContext')
+
+      const ctx = new Context()
+      ctx.request = helpers.getRequest(req)
+      ctx.response = helpers.getResponse(req, res)
+      ctx.session = helpers.getSession(req, res)
+
+      ctx
+        .auth
+        .check()
+        .then(() => {
+          res.writeHead(200)
+          res.end()
+        })
+        .catch(({ status, message }) => {
+          res.writeHead(status || 500)
+          res.write(message)
+          res.end()
+        })
+    })
+
+    const { text } = await supertest(this.server).get('/').set('Cookie', 'adonis-auth=1').expect(401)
+    assert.equal(text, 'E_INVALID_SESSION: Invalid session')
+  })
+
   test('throw error when credentials are invalid', async (assert) => {
     this.server.on('request', (req, res) => {
       const Context = ioc.use('Adonis/Src/HttpContext')
@@ -175,33 +202,6 @@ test.group('Session', (group) => {
 
     const { text } = await supertest(this.server).get('/').set('Cookie', 'adonis-auth=1').expect(200)
     assert.equal(text, 'true')
-  })
-
-  test('throw exception when cookie exists but user doesn\'t', async (assert) => {
-    this.server.on('request', (req, res) => {
-      const Context = ioc.use('Adonis/Src/HttpContext')
-
-      const ctx = new Context()
-      ctx.request = helpers.getRequest(req)
-      ctx.response = helpers.getResponse(req, res)
-      ctx.session = helpers.getSession(req, res)
-
-      ctx
-        .auth
-        .check()
-        .then(() => {
-          res.writeHead(200)
-          res.end()
-        })
-        .catch(({ status, message }) => {
-          res.writeHead(status || 500)
-          res.write(message)
-          res.end()
-        })
-    })
-
-    const { text } = await supertest(this.server).get('/').set('Cookie', 'adonis-auth=1').expect(401)
-    assert.equal(text, 'E_INVALID_SESSION: Invalid session')
   })
 
   test('set user property on auth when user exists', async (assert) => {
